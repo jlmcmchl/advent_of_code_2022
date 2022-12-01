@@ -51,7 +51,7 @@ macro_rules! impl_output_from {
     };
 }
 
-impl_output_from!{
+impl_output_from! {
     (U8,     u8),
     (U16,    u16),
     (U32,    u32),
@@ -62,6 +62,8 @@ impl_output_from!{
     (I32,    i32),
     (I64,    i64),
     (I128,   i128),
+    (ISize,   isize),
+    (USize,   usize),
     (String, String)
 }
 
@@ -78,6 +80,8 @@ impl Display for Output {
             Output::I32(v) => write!(f, "{v}"),
             Output::I64(v) => write!(f, "{v}"),
             Output::I128(v) => write!(f, "{v}"),
+            Output::ISize(v) => write!(f, "{v}"),
+            Output::USize(v) => write!(f, "{v}"),
             Output::String(v) => write!(f, "{v}"),
         }
     }
