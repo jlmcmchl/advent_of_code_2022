@@ -4,7 +4,7 @@ const INPUT: &str = include_str!("../../input/01/input.txt");
 
 pub fn read() -> Input {
     INPUT
-        .replace("\r", "")
+        .replace('\r', "")
         .split("\n\n")
         .map(|elf| {
             elf.split('\n')
