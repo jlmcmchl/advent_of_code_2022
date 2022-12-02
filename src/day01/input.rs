@@ -8,7 +8,8 @@ pub fn read() -> Input {
         .split("\n\n")
         .map(|elf| {
             elf.split('\n')
-                .map(|item| item.trim().parse::<usize>().unwrap()).sum()
+                .map(|item| item.trim().parse::<usize>().unwrap())
+                .sum()
         })
         .collect()
 }
