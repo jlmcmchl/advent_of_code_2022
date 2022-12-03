@@ -39,7 +39,7 @@ fn main() {
         23 => day23::run,
         24 => day24::run,
         25 => day25::run,
-        _ => panic!("There's no day {} on the Advent Calendar!", day),
+        _ => panic!("There's no day {day} on the Advent Calendar!"),
     };
 
     let answer_one = run(Part::One);
@@ -48,7 +48,7 @@ fn main() {
     println!("************************************************************");
     println!("* Advent of Code: 2022");
     println!("*   Solution for...");
-    println!("*     Part One: {}", answer_one);
-    println!("*     Part Two: {}", answer_two);
+    println!("*     Part One: {answer_one}");
+    println!("*     Part Two: {answer_two}");
     println!("************************************************************");
 }
