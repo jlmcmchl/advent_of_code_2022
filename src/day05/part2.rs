@@ -1,5 +1,22 @@
 use crate::day05::{Input, Output};
 
 pub fn solve(input: &Input) -> Output {
-    unimplemented!()
+    let (stacks, moves) = input;
+    let mut stacks = stacks.clone();
+
+    let mut tmp_stack = Vec::with_capacity(64);
+
+    moves.iter().for_each(|(count, origin, dest)| {
+        for i in 0..*count {
+            let tmp = stacks[*origin - 1].pop().unwrap();
+            tmp_stack.push(tmp);
+        }
+
+        for i in 0..*count {
+            let tmp = tmp_stack.pop().unwrap();
+            stacks[*dest - 1].push(tmp);
+        }
+    });
+
+    Output::String(stacks.iter().map(|stack| stack.last().unwrap()).collect())
 }
