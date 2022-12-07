@@ -18,23 +18,21 @@ pub fn run(part: Part) -> Output {
 
 fn solve(input: &Input, scan: usize) -> Output {
     let input = input.as_bytes();
-    let mut last_seen = HashMap::<u8, usize>::new();
+    let mut last_seen = 0u32;
 
-    let mut idx = 0;
-    let mut next_valid = 0;
+    let mut idx = scan;
+
+    for chr in &input[0..scan] {
+        last_seen ^= 1 << (chr - b'a');
+    }
 
     loop {
-        let chr = input[idx];
-
-        let last_idx = last_seen.get(&chr).unwrap_or(&0);
-
-        if idx - last_idx >= scan && next_valid == idx {
-            return (1 + idx).into();
-        } else {
-            next_valid = next_valid.max(idx + scan - (idx - last_idx));
+        if last_seen.count_ones() as usize == scan {
+            return idx.into();
         }
 
-        last_seen.insert(chr, idx);
+        last_seen ^= 1 << (input[idx] - b'a');
+        last_seen ^= 1 << (input[idx - scan] - b'a');
 
         idx += 1;
     }
