@@ -58,12 +58,12 @@ pub fn solve(input: &Input) -> Output {
         idx += 1;
     }
 
-    dbg!(&subfolders)
+    subfolders
         .keys()
         .map(|name| (name, folder_size(name, &subfolders, &sizes)))
-        .inspect(|data| {
-            dbg!(data);
-        })
+        // .inspect(|data| {
+        //     dbg!(data);
+        // })
         .filter(|(_, size)| *size <= 100000)
         .map(|(_, size)| size)
         // .inspect(|val| {

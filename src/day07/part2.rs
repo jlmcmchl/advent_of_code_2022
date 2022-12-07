@@ -63,7 +63,7 @@ pub fn solve(input: &Input) -> Output {
 
     let free_space = total_disk - used_space;
 
-    let space_to_free = dbg!(30000000 - free_space);
+    let space_to_free = 30000000 - free_space;
 
     subfolders
         .keys()
