@@ -4,7 +4,7 @@ pub mod part2;
 
 use crate::{Output, Part};
 
-pub type Input = u8;
+pub type Input = Vec<Line>;
 
 pub fn run(part: Part) -> Output {
     let input = input::read();
@@ -29,4 +29,12 @@ mod tests {
         let result = run(Part::Two);
         println!("{result}");
     }
+}
+
+#[derive(Debug, Clone)]
+pub enum Line {
+    CD(String),
+    LS,
+    File(String, usize),
+    Directory(String),
 }
