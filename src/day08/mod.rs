@@ -2,9 +2,11 @@ pub mod input;
 pub mod part1;
 pub mod part2;
 
+use ndarray::{Array, Ix2};
+
 use crate::{Output, Part};
 
-pub type Input = u8;
+pub type Input = Array<u8, Ix2>;
 
 pub fn run(part: Part) -> Output {
     let input = input::read();
