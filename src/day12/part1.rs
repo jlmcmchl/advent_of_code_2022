@@ -17,7 +17,7 @@ impl PartialOrd for HeapItem {
         match self
             .steps
             .partial_cmp(&other.steps)
-            .and_then(|ord| Some(ord.reverse()))
+            .map(|ord| ord.reverse())
         {
             Some(core::cmp::Ordering::Equal) => {}
             ord => return ord,
@@ -25,7 +25,7 @@ impl PartialOrd for HeapItem {
         match self
             .distance
             .partial_cmp(&other.distance)
-            .and_then(|ord| Some(ord.reverse()))
+            .map(|ord| ord.reverse())
         {
             Some(core::cmp::Ordering::Equal) => {}
             ord => return ord,
@@ -76,14 +76,12 @@ fn adjacent((x, y): &(usize, usize), shape: &[usize]) -> Vec<(usize, usize)> {
 pub fn solve(input: &Input) -> Output {
     let (start_coord, _) = input
         .indexed_iter()
-        .filter(|(d, val)| matches!(val, super::Node::Start))
-        .next()
+        .find(|(d, val)| matches!(val, super::Node::Start))
         .unwrap();
 
     let (end_coord, _) = input
         .indexed_iter()
-        .filter(|(d, val)| matches!(val, super::Node::End))
-        .next()
+        .find(|(d, val)| matches!(val, super::Node::End))
         .unwrap();
 
     let mut queue = BinaryHeap::new();

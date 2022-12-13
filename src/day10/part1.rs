@@ -22,7 +22,7 @@ pub fn solve(input: &Input) -> Output {
             } else {
                 "."
             };
-            println!("{cycle} = {x} => {add}");
+            // println!("{cycle} = {x} => {add}");
             out += add;
 
             if (cycle - 20) % 40 == 0 {
@@ -33,7 +33,7 @@ pub fn solve(input: &Input) -> Output {
                 out += "\n";
             }
         } else {
-            println!("executing {:?}", input[idx]);
+            // println!("executing {:?}", input[idx]);
             match input[idx] {
                 super::input::Instr::Addx(val) => x += val,
                 super::input::Instr::Noop => {}

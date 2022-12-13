@@ -16,7 +16,7 @@ impl PartialOrd for HeapItem {
         match self
             .steps
             .partial_cmp(&other.steps)
-            .and_then(|ord| Some(ord.reverse()))
+            .map(|ord| ord.reverse())
         {
             Some(core::cmp::Ordering::Equal) => {}
             ord => return ord,
@@ -24,7 +24,7 @@ impl PartialOrd for HeapItem {
         match self
             .distance
             .partial_cmp(&other.distance)
-            .and_then(|ord| Some(ord.reverse()))
+            .map(|ord| ord.reverse())
         {
             Some(core::cmp::Ordering::Equal) => {}
             ord => return ord,
@@ -75,14 +75,12 @@ fn adjacent((x, y): &(usize, usize), shape: &[usize]) -> Vec<(usize, usize)> {
 pub fn solve_p1(input: &Input) -> Option<usize> {
     let (start_coord, _) = input
         .indexed_iter()
-        .filter(|(d, val)| matches!(val, super::Node::Start))
-        .next()
+        .find(|(d, val)| matches!(val, super::Node::Start))
         .unwrap();
 
     let (end_coord, _) = input
         .indexed_iter()
-        .filter(|(d, val)| matches!(val, super::Node::End))
-        .next()
+        .find(|(d, val)| matches!(val, super::Node::End))
         .unwrap();
 
     let mut queue = BinaryHeap::new();
@@ -95,7 +93,7 @@ pub fn solve_p1(input: &Input) -> Option<usize> {
 
     let mut seen = HashSet::new();
 
-    while queue.len() > 0 && queue.peek().unwrap().distance > 0 {
+    while !queue.is_empty() && queue.peek().unwrap().distance > 0 {
         let item = queue.pop().unwrap();
 
         if seen.contains(&item.coord) {
@@ -133,7 +131,7 @@ pub fn solve_p1(input: &Input) -> Option<usize> {
             .for_each(|next| queue.push(next));
     }
 
-    if queue.len() > 0 {
+    if !queue.is_empty() {
         Some(queue.peek().unwrap().steps)
     } else {
         None
@@ -151,8 +149,7 @@ pub fn solve(input: &Input) -> Output {
 
     let (start_coord, _) = input
         .indexed_iter()
-        .filter(|(d, val)| matches!(val, super::Node::Start))
-        .next()
+        .find(|(d, val)| matches!(val, super::Node::Start))
         .unwrap();
 
     alt_input[start_coord] = super::Node::Path(0);
