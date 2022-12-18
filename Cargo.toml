@@ -16,6 +16,8 @@ path = "src/bin.rs"
 [dependencies]
 clap = { version = "4.0.22", features = ["derive"] }
 criterion = "0.4.0"
+divrem = "1.0.0"
+lazy_static = "1.4.0"
 ndarray = "0.15.6"
 nom = "7.1.1"
 
