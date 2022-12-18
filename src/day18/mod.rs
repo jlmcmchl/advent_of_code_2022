@@ -2,9 +2,11 @@ pub mod input;
 pub mod part1;
 pub mod part2;
 
+use std::collections::HashSet;
+
 use crate::{Output, Part};
 
-pub type Input = u8;
+pub type Input = HashSet<(isize, isize, isize)>;
 
 pub fn run(part: Part) -> Output {
     let input = input::read();
