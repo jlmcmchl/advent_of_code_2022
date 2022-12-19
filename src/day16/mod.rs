@@ -2,9 +2,11 @@ pub mod input;
 pub mod part1;
 pub mod part2;
 
+use std::collections::HashMap;
+
 use crate::{Output, Part};
 
-pub type Input = u8;
+pub type Input = HashMap<String, (usize, Vec<String>)>;
 
 pub fn run(part: Part) -> Output {
     let input = input::read();
@@ -18,6 +20,10 @@ pub fn run(part: Part) -> Output {
 mod tests {
     use super::*;
 
+    /*
+    want:
+    AA -> DD -> BB -> JJ -> HH -> EE -> CC
+    */
     #[test]
     fn check_answer_one() {
         let result = run(Part::One);

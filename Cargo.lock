@@ -9,6 +9,7 @@ dependencies = [
  "clap 4.0.22",
  "criterion",
  "divrem",
+ "itertools",
  "lazy_static",
  "ndarray",
  "nom",
