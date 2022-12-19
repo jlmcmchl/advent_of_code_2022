@@ -1,35 +1,17 @@
 use std::collections::{BinaryHeap, HashMap};
+use std::time::Instant;
 
-use itertools::{Itertools, MultiProduct};
+use itertools::Itertools;
 use ndarray::Array2;
 
 use crate::day16::{Input, Output};
 
-#[derive(PartialEq, Eq, Default, Debug, Clone, Copy)]
-struct Crawler {
-    node: usize,
-    target: usize,
-    remaining: usize,
-}
-
 #[derive(PartialEq, Eq, Default, Debug)]
 struct State {
-    you: Crawler,
-    elephant: Crawler,
+    node: usize,
     time: usize,
     total: usize,
-    rate: usize,
-    seen: Vec<usize>,
-}
-
-impl State {
-    fn total_by(&self, time: usize) -> usize {
-        if self.time >= time {
-            self.total
-        } else {
-            self.total + (time - self.time) * self.rate
-        }
-    }
+    seen: usize,
 }
 
 impl PartialOrd for State {
@@ -40,19 +22,19 @@ impl PartialOrd for State {
 
 impl Ord for State {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        (self.total_by(26) - self.total).cmp(&(other.total_by(26) - other.total))
+        self.time.cmp(&other.time).reverse()
     }
 }
 
 #[derive(PartialEq, Eq, Default, Debug)]
 struct FinalState {
     total: usize,
-    seen: Vec<usize>,
+    seen: usize,
 }
 
 impl PartialOrd for FinalState {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.total.partial_cmp(&other.total)
+        Some(self.cmp(other))
     }
 }
 
@@ -89,7 +71,64 @@ fn get_shortest_distances(input: &Input, nodes: &HashMap<String, usize>) -> Arra
     grid
 }
 
+fn solve_for_target_valves(
+    nodes: &HashMap<String, usize>,
+    useful_nodes: &[(usize, &(String, (usize, Vec<usize>)))],
+    nodes_vec: &[(String, (usize, Vec<usize>))],
+    grid: &Array2<usize>,
+    time_limit: usize,
+) -> usize {
+    let mut queue = BinaryHeap::new();
+    let mut results = BinaryHeap::new();
+
+    queue.push(State {
+        node: nodes["AA"],
+        ..Default::default()
+    });
+
+    while let Some(mut state) = queue.pop() {
+        useful_nodes
+            .iter()
+            .filter(|(node, _)| state.seen & (1 << node) == 0 && *node != state.node)
+            .for_each(|(node, (_, (rate, _)))| {
+                let dist = grid[(state.node, *node)];
+                let time = state.time + dist + 1;
+
+                if time >= time_limit {
+                    return;
+                }
+
+                let total = state.total + rate * (time_limit - time);
+                let seen = state.seen | (1 << state.node);
+
+                let new_state = State {
+                    node: *node,
+                    time,
+                    total,
+                    seen,
+                };
+
+                queue.push(new_state);
+            });
+
+        let seen = state.seen | (1 << state.node);
+
+        results.push(FinalState {
+            total: state.total,
+            seen,
+        });
+    }
+
+    if let Some(state) = results.peek() {
+        state.total
+    } else {
+        0
+    }
+}
+
 pub fn solve(input: &Input) -> Output {
+    let start = Instant::now();
+
     let nodes = input
         .iter()
         .enumerate()
@@ -110,212 +149,57 @@ pub fn solve(input: &Input) -> Output {
 
     let grid = get_shortest_distances(input, &nodes);
 
-    // println!("{:?}", nodes);
-    // println!("{}", grid);
+    let active_valves = useful_nodes
+        .iter()
+        .filter(|(_, (name, _))| name != "AA")
+        .map(|(idx, _)| *idx)
+        .collect::<Vec<_>>();
 
-    let valves = useful_nodes.iter().filter(|(_, (node, _))| *node != "AA");
+    let total_signature: usize = active_valves.iter().fold(0, |agg, idx| agg | (1 << *idx));
 
-    let mut queue: BinaryHeap<_> = valves
-        .combinations(2)
-        .flat_map(|pair| {
-            [
-                State {
-                    you: Crawler { node: nodes["AA"], target: pair[0].0, remaining: grid[(nodes["AA"], pair[0].0)] },
-                    elephant: Crawler { node: nodes["AA"], target: pair[1].0, remaining: grid[(nodes["AA"], pair[1].0)] },
-                    ..Default::default()
-                },
-                State {
-                    you: Crawler { node: nodes["AA"], target: pair[1].0, remaining: grid[(nodes["AA"], pair[1].0)] },
-                    elephant: Crawler { node: nodes["AA"], target: pair[0].0, remaining: grid[(nodes["AA"], pair[0].0)] },
-                    ..Default::default()
-                },
-            ]
-        })
-        .collect();
-
-    let mut results = BinaryHeap::new();
-
-    while !queue.is_empty() && queue.peek().unwrap().time < 30 {
-        let mut state = queue.pop().unwrap();
-
-        state.total += state.rate;
-        state.time += 1;
-
-        if state.time == 26 {
-            // done
-
-            let mut seen = state.seen.clone();
-            seen.push(state.you.node);
-            seen.push(state.elephant.node);
-
-            results.push(FinalState {
-                total: state.total,
-                seen,
-            });
-        } else if state.you.remaining == 0 && state.elephant.remaining == 0 {
-            // special case
-            state.rate += nodes_vec[state.you.target].1 .0;
-            state.rate += nodes_vec[state.elephant.target].1 .0;
-            state.seen.push(state.you.node);
-            state.seen.push(state.elephant.node);
-            state.you.node = state.you.target;
-            state.elephant.node = state.elephant.target;
-
-            let all_targets = useful_nodes
+    let results = active_valves
+        .iter()
+        .powerset()
+        .map(|valves| {
+            let signature: usize = valves.iter().fold(0, |agg, idx| agg | (1 << **idx));
+            let currently_useful_nodes = useful_nodes
                 .iter()
-                .filter(|(node, _)| {
-                    !state.seen.contains(node)
-                        && *node != state.you.node
-                        && *node != state.elephant.node
-                        && *node != state.you.target
-                        && *node != state.elephant.target
-                })
+                .filter(|(idx, (name, _))| signature & (1 << idx) != 0 || name == "AA")
+                .cloned()
                 .collect::<Vec<_>>();
+            (
+                signature,
+                solve_for_target_valves(&nodes, &currently_useful_nodes, &nodes_vec, &grid, 26),
+            )
+        })
+        .collect::<HashMap<_, _>>();
 
-            all_targets.iter().combinations(2).for_each(|pair| {
-                queue.push(State {
-                    you: Crawler { node: state.you.node, target: pair[0].0, remaining: grid[(state.you.node, pair[0].0)] },
-                    elephant: Crawler { node: state.elephant.node, target: pair[1].0, remaining: grid[(state.elephant.node, pair[1].0)]},
-                    time: state.time,
-                    rate: state.rate,
-                    total: state.total,
-                    seen: state.seen.clone(),
-                });
-                queue.push(State {
-                    you: Crawler { node: state.you.node, target: pair[1].0, remaining: grid[(state.you.node, pair[1].0)] },
-                    elephant: Crawler { node: state.elephant.node, target: pair[0].0, remaining: grid[(state.elephant.node, pair[0].0)]},
-                    time: state.time,
-                    rate: state.rate,
-                    total: state.total,
-                    seen: state.seen.clone(),
-                });
-            });
-        } else if state.you.remaining == 0 {
-            state.rate += nodes_vec[state.you.target].1 .0;
-            state.seen.push(state.you.node);
-            state.you.node = state.you.target;
+    if let Some((best, signature)) = results
+        .iter()
+        .map(|(signature, score)| (results[&(total_signature ^ *signature)] + score, signature))
+        .max()
+    {
+        println!("took: {:?}", Instant::now() - start);
+        println!("signature: {signature:x} {signature}");
 
-            // attempt to traverse to other nodes
-            useful_nodes
-                .iter()
-                .filter(|(node, _)| {
-                    !state.seen.contains(node)
-                        && *node != state.you.node
-                        && *node != state.elephant.node
-                        && *node != state.elephant.target
-                })
-                .for_each(|(node, (node_name, (rate, _)))| {
-                    let dist = grid[(state.you.node, *node)];
-
-                    // if state.node.1 == nodes["BB"] && *node == nodes["CC"] {
-                    //     dbg!(&state);
-                    // }
-
-                    // println!(
-                    //     "trying {} to {node_name} @ {}",
-                    //     nodes_vec[state.node].0,
-                    //     state.time + dist
-                    // );
-
-                    let new_state = State {
-                        you: Crawler {node: state.you.node, target: *node, remaining: dist},
-                        elephant: state.elephant,
-                        time: state.time,
-                        rate: state.rate,
-                        total: state.total,
-                        seen: state.seen.clone(),
-                    };
-
-                    // println!("predicting {} at t=30", new_state.total);
-
-                    queue.push(new_state);
-                });
-
-            // what if we just wait here?
-            let final_total = state.total + (26 - state.time) * state.rate;
-            let mut seen = state.seen.clone();
-            seen.push(state.elephant.node);
-
-            results.push(FinalState {
-                total: state.total + (26 - state.time) * state.rate,
-                seen,
-            });
-
-            state.you.remaining = 99;
-            queue.push(state);
-        } else if state.elephant.remaining == 0 {
-            state.rate += nodes_vec[state.elephant.target].1 .0;
-            state.seen.push(state.elephant.node);
-            state.elephant.node = state.elephant.target;
-
-            // attempt to traverse to other nodes
-            useful_nodes
-                .iter()
-                .filter(|(node, _)| {
-                    !state.seen.contains(node)
-                        && *node != state.you.node
-                        && *node != state.elephant.node
-                        && *node != state.you.target
-                })
-                .for_each(|(node, (node_name, (rate, _)))| {
-                    let dist = grid[(state.elephant.node, *node)];
-
-                    // if state.node.1 == nodes["BB"] && *node == nodes["CC"] {
-                    //     dbg!(&state);
-                    // }
-
-                    // println!(
-                    //     "trying {} to {node_name} @ {}",
-                    //     nodes_vec[state.node].0,
-                    //     state.time + dist
-                    // );
-
-                    let new_state = State {
-                        you: state.you,
-                        elephant: Crawler {node: state.you.node, target: *node, remaining: dist},
-                        time: state.time,
-                        rate: state.rate,
-                        total: state.total,
-                        seen: state.seen.clone(),
-                    };
-
-                    // println!("predicting {} at t=30", new_state.total);
-
-                    queue.push(new_state);
-                });
-
-            // what if we just wait here?
-            let final_total = state.total + (26 - state.time) * state.rate;
-            let mut seen = state.seen.clone();
-            seen.push(state.you.node);
-
-            results.push(FinalState {
-                total: state.total + (26 - state.time) * state.rate,
-                seen,
-            });
-
-            state.elephant.remaining = 99;
-            queue.push(state);
-        } else {
-            state.you.remaining -= 1;
-            state.elephant.remaining -= 1;
-            queue.push(state);
+        for (i, val) in nodes_vec.iter().enumerate() {
+            if signature & (1 << i) != 0 {
+                println!("{}", val.0);
+            }
         }
-    }
 
-    println!("Total Candidates: {}", results.len());
-    if let Some(state) = results.peek() {
-        dbg!(state);
-        let path = state
-            .seen
-            .iter()
-            .map(|node| nodes_vec[*node].0.clone())
-            .reduce(|a, b| a + " -> " + &b)
-            .unwrap();
-        println!("{path}");
+        let other = total_signature ^ signature;
 
-        state.total.into()
+        println!("other signature: {other:x} {other}");
+        for (i, val) in nodes_vec.iter().enumerate() {
+            if other & (1 << i) != 0 {
+                println!("{}", val.0);
+            }
+        }
+
+        best
     } else {
-        0.into()
+        0
     }
+    .into()
 }

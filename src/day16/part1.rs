@@ -28,7 +28,7 @@ impl Ord for State {
 #[derive(PartialEq, Eq, Default, Debug)]
 struct FinalState {
     total: usize,
-    seen: Vec<usize>
+    seen: Vec<usize>,
 }
 
 impl PartialOrd for FinalState {
@@ -100,9 +100,11 @@ pub fn solve(input: &Input) -> Output {
 
         useful_nodes
             .iter()
-            .filter(|(node, _)| !state.seen.contains(&nodes[*node]) 
-                                          && nodes[*node] != state.node
-                                          && state.time + grid[(state.node, nodes[*node])] < 30)
+            .filter(|(node, _)| {
+                !state.seen.contains(&nodes[*node])
+                    && nodes[*node] != state.node
+                    && state.time + grid[(state.node, nodes[*node])] < 30
+            })
             .for_each(|(node_name, (rate, _))| {
                 let node = nodes[*node_name];
                 let dist = grid[(state.node, node)];
@@ -122,26 +124,29 @@ pub fn solve(input: &Input) -> Output {
 
                 // println!("predicting {} at t=30", new_state.total);
 
-
                 queue.push(new_state);
             });
-        
-        
+
         let mut seen = state.seen.clone();
         seen.push(state.node);
 
         results.push(FinalState {
             total: state.total,
-            seen: seen
+            seen,
         });
     }
-    
+
     println!("dur: {:?}", Instant::now() - start);
 
     println!("Total Candidates: {}", results.len());
     if let Some(state) = results.peek() {
         dbg!(state);
-        let path = state.seen.iter().map(|node| nodes_vec[*node].clone()).reduce(|a, b| a + " -> " + &b).unwrap();
+        let path = state
+            .seen
+            .iter()
+            .map(|node| nodes_vec[*node].clone())
+            .reduce(|a, b| a + " -> " + &b)
+            .unwrap();
         println!("{path}");
 
         state.total.into()
