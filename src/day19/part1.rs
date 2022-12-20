@@ -1,4 +1,6 @@
-use std::{collections::BinaryHeap, rc::Rc};
+use std::{collections::BinaryHeap, rc::Rc, result};
+
+use rayon::prelude::*;
 
 use crate::day19::{Input, Output};
 
@@ -15,7 +17,64 @@ struct State {
     clay: u8,
     obsidian: u8,
     geode: u8,
-    // last: Option<Rc<State>>
+}
+
+impl State {
+    fn fast_forward(&self, dt: u8) -> Self {
+        State {
+            time: self.time + dt,
+            ore: self.ore.saturating_add(dt.saturating_mul(self.orebots)),
+            clay: self.clay.saturating_add(dt.saturating_mul(self.claybots)),
+            obsidian: self
+                .obsidian
+                .saturating_add(dt.saturating_mul(self.obsidianbots)),
+            geode: self.geode.saturating_add(dt.saturating_mul(self.geodebots)),
+            orebots: self.orebots,
+            claybots: self.claybots,
+            obsidianbots: self.obsidianbots,
+            geodebots: self.geodebots,
+        }
+    }
+
+    fn allocated_ore(&self, blueprint: &Blueprint) -> u8 {
+        blueprint.orebot * self.orebots
+            + blueprint.claybot * self.claybots
+            + blueprint.obsidianbot.0 * self.obsidianbots
+            + blueprint.geodebot.0 * self.geodebots
+    }
+
+    fn allocated_clay(&self, blueprint: &Blueprint) -> u8 {
+        blueprint.obsidianbot.1 * self.obsidianbots
+    }
+
+    fn allocated_obsidian(&self, blueprint: &Blueprint) -> u8 {
+        blueprint.geodebot.1 * self.geodebots
+    }
+
+    fn time_to_ore(&self, blueprint: &Blueprint, ore: u8) -> u8 {
+        if self.ore >= self.allocated_ore(blueprint) + ore {
+            0
+        } else {
+            (ore - (self.ore - self.allocated_ore(blueprint))).div_ceil(self.orebots)
+        }
+    }
+
+    fn time_to_clay(&self, blueprint: &Blueprint, clay: u8) -> u8 {
+        if self.clay >= self.allocated_clay(blueprint) + clay {
+            0
+        } else {
+            (clay - (self.clay - self.allocated_clay(blueprint))).div_ceil(self.claybots)
+        }
+    }
+
+    fn time_to_obsidian(&self, blueprint: &Blueprint, obsidian: u8) -> u8 {
+        if self.obsidian >= self.allocated_obsidian(blueprint) + obsidian {
+            0
+        } else {
+            (obsidian - (self.obsidian - self.allocated_obsidian(blueprint)))
+                .div_ceil(self.obsidianbots)
+        }
+    }
 }
 
 impl PartialOrd for State {
@@ -49,38 +108,50 @@ fn options(blueprint: &Blueprint, state: &State) -> Vec<State> {
     let clay_allocated = blueprint.obsidianbot.1 * state.obsidianbots;
     let obsidian_allocated = blueprint.geodebot.1 * state.geodebots;
 
-    if state.ore - ore_allocated >= blueprint.orebot {
-        let mut option = state.clone();
+    let max_orebots = blueprint
+        .orebot
+        .max(blueprint.claybot)
+        .max(blueprint.obsidianbot.0)
+        .max(blueprint.geodebot.0);
+
+    let max_claybots = blueprint.obsidianbot.1;
+
+    let max_obsidianbots = blueprint.geodebot.1;
+
+    if state.orebots < max_orebots {
+        // try making an orebot next
+        let wait = state.time_to_ore(blueprint, blueprint.orebot);
+        let mut option = state.fast_forward(wait + 1);
         option.orebots += 1;
-        // option.last = Some(upstream.clone());
 
         options.push(option);
     }
 
-    if state.ore - ore_allocated >= blueprint.claybot {
-        let mut option = state.clone();
+    if state.claybots < max_claybots {
+        // try making a claybot next
+        let wait = state.time_to_ore(blueprint, blueprint.claybot);
+        let mut option = state.fast_forward(wait + 1);
         option.claybots += 1;
-        // option.last = Some(upstream.clone());
 
         options.push(option);
     }
 
-    if state.ore - ore_allocated >= blueprint.obsidianbot.0
-        && state.clay - clay_allocated >= blueprint.obsidianbot.1
-    {
-        let mut option = state.clone();
+    if state.claybots > 0 && state.obsidianbots < max_obsidianbots {
+        // try making an obsidianbot
+        let wait_ore = state.time_to_ore(blueprint, blueprint.obsidianbot.0);
+        let wait_clay = state.time_to_clay(blueprint, blueprint.obsidianbot.1);
+        let mut option = state.fast_forward(wait_ore.max(wait_clay) + 1);
         option.obsidianbots += 1;
-        // option.last = Some(upstream.clone());
 
         options.push(option);
     }
 
-    if state.ore - ore_allocated >= blueprint.geodebot.0
-        && state.obsidian - obsidian_allocated >= blueprint.geodebot.1
-    {
-        let mut option = state.clone();
+    if state.obsidianbots > 0 {
+        // try making a geodebot
+        let wait_ore = state.time_to_ore(blueprint, blueprint.geodebot.0);
+        let wait_obsidian = state.time_to_obsidian(blueprint, blueprint.geodebot.1);
+        let mut option = state.fast_forward(wait_ore.max(wait_obsidian) + 1);
         option.geodebots += 1;
-        // option.last = Some(upstream.clone());
 
         options.push(option);
     }
@@ -100,42 +171,20 @@ fn max_geodes_by(blueprint: &Blueprint, time_limit: u8) -> u8 {
     });
 
     while let Some(mut state) = queue.pop() {
-        if state.time == time_limit {
-            results.push(state.clone());
+        if state.time >= time_limit {
             continue;
         }
 
         for mut option in options(blueprint, &state) {
-            option.time += 1;
-            option.ore += state.orebots;
-            option.clay += state.claybots;
-            option.obsidian += state.obsidianbots;
-            option.geode += state.geodebots;
-
             queue.push(option);
         }
 
-        state.time += 1;
-        state.ore += state.orebots;
-        state.clay += state.claybots;
-        state.obsidian += state.obsidianbots;
-        state.geode += state.geodebots;
-
-        queue.push(state);
+        if state.geodebots > 0 {
+            results.push(state.fast_forward(time_limit - state.time));
+        }
     }
 
     if let Some(best) = results.peek() {
-        // let mut states = vec![best.clone()];
-        // let mut current = best.clone();
-
-        // while let Some(next) = current.last {
-        //     states.push(next.as_ref().clone());
-        //     current = next.as_ref().clone();
-        // }
-
-        // for state in states.iter().rev() {
-        //     println!("{state:?}");
-        // }
 
         println!("Solved blueprint {blueprint:?}");
         println!("{best:?}");
@@ -151,7 +200,5 @@ fn quality(blueprint: &Blueprint) -> usize {
 }
 
 pub fn solve(input: &Input) -> Output {
-    dbg!(input);
-
-    input.iter().map(quality).sum::<usize>().into()
+    input.par_iter().map(quality).sum::<usize>().into()
 }

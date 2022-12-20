@@ -1,6 +1,7 @@
 #![allow(unused)]
 #![feature(iter_array_chunks)]
 #![feature(array_windows)]
+#![feature(int_roundings)]
 use std::cmp::PartialEq;
 use std::fmt::{Display, Formatter, Result as DisplayResult};
 
