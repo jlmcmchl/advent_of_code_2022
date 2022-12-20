@@ -4,7 +4,16 @@ pub mod part2;
 
 use crate::{Output, Part};
 
-pub type Input = u8;
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Blueprint {
+    id: u8,
+    orebot: u8,
+    claybot: u8,
+    obsidianbot: (u8, u8),
+    geodebot: (u8, u8),
+}
+
+pub type Input = Vec<Blueprint>;
 
 pub fn run(part: Part) -> Output {
     let input = input::read();
