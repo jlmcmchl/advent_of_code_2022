@@ -2,9 +2,31 @@ pub mod input;
 pub mod part1;
 pub mod part2;
 
+use std::collections::HashMap;
+
 use crate::{Output, Part};
 
-pub type Input = u8;
+pub type Input = (HashMap<String, usize>, Vec<Equation>);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Value {
+    Direct(usize),
+    Indirect(usize),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Op {
+    Add,
+    Sub,
+    Mul,
+    Div,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Equation {
+    Singleton(Value),
+    Expression(Value, Op, Value),
+}
 
 pub fn run(part: Part) -> Output {
     let input = input::read();
